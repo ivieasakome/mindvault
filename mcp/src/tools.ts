@@ -26,6 +26,7 @@ import {
   METRICS_OUTPUT_SCHEMA,
   NETWORK_PROFILE_OUTPUT_SCHEMA,
   ONCHAIN_MUTATION_OUTPUT_SCHEMA,
+  PENDING_TRANSFER_OUTPUT_SCHEMA,
   PREVIEW_OUTPUT_SCHEMA,
   PUBLISH_BUY_OUTPUT_SCHEMA,
   PUBLISH_BATCH_OUTPUT_SCHEMA,
@@ -1155,6 +1156,30 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: false,
+    },
+  },
+  {
+    name: "mindvault_pending_transfer",
+    description:
+      "Read the open ownership-transfer proposal for a registered resource. Returns the proposed new owner address if a pending transfer exists (created via mindvault_transfer_ownership), or a clear not-found message when no transfer is pending. Read-only — does not require a funded wallet.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        resourceId: {
+          type: "string",
+          description:
+            "The resource ID to inspect for a pending ownership transfer. Example: 'cm7x8y9z'",
+          examples: ["cm7x8y9z", "res-001"],
+        },
+      },
+      required: ["resourceId"],
+    },
+    outputSchema: PENDING_TRANSFER_OUTPUT_SCHEMA as unknown as Record<string, unknown>,
+    annotations: {
+      title: "Pending Transfer",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
     },
   },
   {

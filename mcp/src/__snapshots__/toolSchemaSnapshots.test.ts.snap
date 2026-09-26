@@ -2078,6 +2078,76 @@ exports[`tool schema snapshots > mindvault_network_profile > output schema 1`] =
 }
 `;
 
+exports[`tool schema snapshots > mindvault_pending_transfer > annotations 1`] = `
+{
+  "destructiveHint": false,
+  "idempotentHint": true,
+  "readOnlyHint": true,
+  "title": "Pending Transfer",
+}
+`;
+
+exports[`tool schema snapshots > mindvault_pending_transfer > input schema 1`] = `
+{
+  "properties": {
+    "resourceId": {
+      "description": "The resource ID to inspect for a pending ownership transfer. Example: 'cm7x8y9z'",
+      "examples": [
+        "cm7x8y9z",
+        "res-001",
+      ],
+      "type": "string",
+    },
+  },
+  "required": [
+    "resourceId",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`tool schema snapshots > mindvault_pending_transfer > output schema 1`] = `
+{
+  "properties": {
+    "contract": {
+      "type": "string",
+    },
+    "found": {
+      "type": "boolean",
+    },
+    "message": {
+      "type": "string",
+    },
+    "network": {
+      "type": "string",
+    },
+    "proposedNewOwner": {
+      "type": [
+        "string",
+        "null",
+      ],
+    },
+    "resourceId": {
+      "type": "string",
+    },
+    "rpc": {
+      "type": "string",
+    },
+    "source": {
+      "type": "string",
+    },
+  },
+  "required": [
+    "source",
+    "resourceId",
+    "found",
+    "message",
+    "contract",
+  ],
+  "type": "object",
+}
+`;
+
 exports[`tool schema snapshots > mindvault_preview > annotations 1`] = `
 {
   "destructiveHint": false,
@@ -5243,6 +5313,7 @@ exports[`tool schema snapshots > the covered tool names are pinned 1`] = `
   "mindvault_mainnet_banner",
   "mindvault_metrics",
   "mindvault_network_profile",
+  "mindvault_pending_transfer",
   "mindvault_preview",
   "mindvault_preview_metadata_hash",
   "mindvault_prewarm_catalog",

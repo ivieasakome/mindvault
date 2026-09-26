@@ -71,6 +71,7 @@ import {
   transferOwnership,
   acceptTransfer,
   cancelTransfer,
+  pendingTransfer,
   setListed,
   setTags,
   normalizeMetadataPointer,
@@ -2351,6 +2352,58 @@ describe("cancelTransfer", () => {
     try {
       const res = await dispatchTool("mindvault_cancel_transfer", { resourceId: "res-001" });
       expect(res).toContain("success");
+    } finally {
+      delete process.env.MINDVAULT_MOCK;
+    }
+  });
+});
+
+// ── pendingTransfer ─────────────────────────────────────────────────────────
+
+describe("pendingTransfer", () => {
+  beforeEach(() => {
+    _resetProfiles();
+  });
+
+  it("succeeds in mock mode and returns a found pending transfer", async () => {
+    process.env.MINDVAULT_MOCK = "1";
+    try {
+      const res = await pendingTransfer("res-001");
+      const parsed = JSON.parse(res);
+      expect(parsed.source).toBe("on-chain (mock)");
+      expect(parsed.resourceId).toBe("res-001");
+      expect(parsed.found).toBe(true);
+      expect(typeof parsed.proposedNewOwner).toBe("string");
+      expect(parsed.proposedNewOwner).toMatch(/^G[A-Z2-7]{55}$/);
+      expect(parsed.message).toContain("res-001");
+    } finally {
+      delete process.env.MINDVAULT_MOCK;
+    }
+  });
+
+  it("dispatches through dispatchTool with valid arguments in mock mode", async () => {
+    process.env.MINDVAULT_MOCK = "1";
+    try {
+      const res = await dispatchTool("mindvault_pending_transfer", { resourceId: "res-001" });
+      const parsed = JSON.parse(res);
+      expect(parsed.found).toBe(true);
+      expect(parsed.resourceId).toBe("res-001");
+    } finally {
+      delete process.env.MINDVAULT_MOCK;
+    }
+  });
+
+  it("returns consistent output shape with required schema fields", async () => {
+    process.env.MINDVAULT_MOCK = "1";
+    try {
+      const res = await pendingTransfer("res-001");
+      const parsed = JSON.parse(res);
+      // Required fields from PENDING_TRANSFER_OUTPUT_SCHEMA
+      expect(parsed).toHaveProperty("source");
+      expect(parsed).toHaveProperty("resourceId");
+      expect(parsed).toHaveProperty("found");
+      expect(parsed).toHaveProperty("message");
+      expect(parsed).toHaveProperty("contract");
     } finally {
       delete process.env.MINDVAULT_MOCK;
     }

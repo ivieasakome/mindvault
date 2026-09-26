@@ -41,6 +41,7 @@ exports[`MCP tool metadata > exposes the expected tool surface 1`] = `
   "mindvault_transfer_ownership",
   "mindvault_accept_transfer",
   "mindvault_cancel_transfer",
+  "mindvault_pending_transfer",
   "mindvault_set_listed",
   "mindvault_dispute",
   "mindvault_check_state_permissions",

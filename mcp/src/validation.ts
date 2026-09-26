@@ -398,6 +398,9 @@ export const TOOL_ARGUMENT_SPECS: Record<string, ToolArgumentSpec> = {
     resourceId: RESOURCE_ID,
     confirmMainnet: CONFIRM_MAINNET,
   },
+  mindvault_pending_transfer: {
+    resourceId: RESOURCE_ID,
+  },
   mindvault_set_listed: {
     resourceId: RESOURCE_ID,
     listed: { kind: "flag", required: true },

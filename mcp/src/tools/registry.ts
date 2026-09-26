@@ -576,3 +576,151 @@ export async function checkConsistency(
 
   return JSON.stringify({ ...report, summary }, null, 2);
 }
+
+/**
+ * Read the open ownership-transfer proposal for a registered resource.
+ *
+ * The contract stores `DataKey::PendingTransfer(id) -> Address` in persistent
+ * storage when `propose_transfer` is called. This function reads that entry
+ * directly via the Soroban RPC `getLedgerEntries` method, so it works without
+ * signing a transaction. Returns the proposed new-owner address when found, or
+ * a clear "not found" payload when no transfer is pending.
+ */
+export async function pendingTransfer(resourceId: string): Promise<string> {
+  if (_isMock()) {
+    const { mockPendingTransfer } = await import("../mock.js");
+    return mockPendingTransfer(resourceId);
+  }
+
+  // First confirm the resource exists on-chain to give a meaningful error.
+  const client = createRegistryClient({
+    contractId: REGISTRY_CONTRACT_ID,
+    rpcUrl: SOROBAN_RPC_URL,
+    networkPassphrase: REGISTRY_NETWORK_PASSPHRASE,
+  });
+
+  let resourceExists = false;
+  try {
+    const tx = await client.get({ id: resourceId });
+    resourceExists = tx.result.isOk();
+  } catch {
+    resourceExists = false;
+  }
+
+  if (!resourceExists) {
+    return JSON.stringify(
+      {
+        source: "on-chain",
+        resourceId,
+        found: false,
+        proposedNewOwner: null,
+        message: `Resource "${resourceId}" is not registered on-chain. Confirm the id from mindvault_browse or mindvault_publish.`,
+        contract: REGISTRY_CONTRACT_ID,
+        network: REGISTRY_NETWORK_PASSPHRASE,
+        rpc: SOROBAN_RPC_URL,
+      },
+      null,
+      2,
+    );
+  }
+
+  // Build the XDR ledger-key for DataKey::PendingTransfer(id).
+  // DataKey is a Soroban-SDK enum; PendingTransfer is variant index 8 (see generated/index.ts DataKey).
+  // The XDR representation is a ScVal of type SCV_VEC: [ScVal::Symbol("PendingTransfer"), ScVal::String(id)].
+  let proposedNewOwner: string | null = null;
+  try {
+    const { xdr, Contract } = await import("@stellar/stellar-sdk");
+    const contract = new Contract(REGISTRY_CONTRACT_ID);
+
+    // Build ScVal key: Vec[Symbol("PendingTransfer"), String(id)]
+    const keyScVal = xdr.ScVal.scvVec([
+      xdr.ScVal.scvSymbol("PendingTransfer"),
+      xdr.ScVal.scvString(resourceId),
+    ]);
+
+    const ledgerKey = xdr.LedgerKey.contractData(
+      new xdr.LedgerKeyContractData({
+        contract: contract.address().toScAddress(),
+        key: keyScVal,
+        durability: xdr.ContractDataDurability.persistent(),
+      }),
+    );
+
+    const keyBase64 = ledgerKey.toXDR("base64");
+
+    const rpcRes = await fetch(SOROBAN_RPC_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "getLedgerEntries",
+        params: { keys: [keyBase64] },
+      }),
+    });
+
+    if (rpcRes.ok) {
+      const rpcData: any = await rpcRes.json();
+      const entries: any[] = rpcData?.result?.entries ?? [];
+      if (entries.length > 0 && entries[0]?.xdr) {
+        const entryXdr = xdr.LedgerEntryData.fromXDR(entries[0].xdr, "base64");
+        const dataVal = entryXdr.contractData().val();
+        // The stored value is an Address (ScVal::Address).
+        if (dataVal.switch().value === xdr.ScValType.scvAddress().value) {
+          const addr = dataVal.address();
+          // Address can be account or contract; for owner it is always account.
+          if (addr.switch().value === xdr.ScAddressType.scAddressTypeAccount().value) {
+            const { StrKey } = await import("@stellar/stellar-sdk");
+            proposedNewOwner = StrKey.encodeEd25519PublicKey(
+              addr.accountId().ed25519(),
+            );
+          } else {
+            // Contract address — encode as C... strkey
+            const { StrKey } = await import("@stellar/stellar-sdk");
+            proposedNewOwner = StrKey.encodeContract(addr.contractId());
+          }
+        }
+      }
+    }
+  } catch (err: any) {
+    throw mcpError(
+      mapTransportError({
+        operation: `Pending transfer lookup failed for resource "${resourceId}"`,
+        source: "soroban",
+        error: err,
+      }),
+    );
+  }
+
+  if (proposedNewOwner === null) {
+    return JSON.stringify(
+      {
+        source: "on-chain",
+        resourceId,
+        found: false,
+        proposedNewOwner: null,
+        message: `No pending ownership transfer exists for resource "${resourceId}". Use mindvault_transfer_ownership to propose one.`,
+        contract: REGISTRY_CONTRACT_ID,
+        network: REGISTRY_NETWORK_PASSPHRASE,
+        rpc: SOROBAN_RPC_URL,
+      },
+      null,
+      2,
+    );
+  }
+
+  return JSON.stringify(
+    {
+      source: "on-chain",
+      resourceId,
+      found: true,
+      proposedNewOwner,
+      message: `A pending ownership transfer exists for resource "${resourceId}". The proposed new owner must call mindvault_accept_transfer to complete it.`,
+      contract: REGISTRY_CONTRACT_ID,
+      network: REGISTRY_NETWORK_PASSPHRASE,
+      rpc: SOROBAN_RPC_URL,
+    },
+    null,
+    2,
+  );
+}

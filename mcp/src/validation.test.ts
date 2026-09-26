@@ -94,6 +94,7 @@ const VALID_CALLS: Record<string, Record<string, unknown>> = {
   },
   mindvault_accept_transfer: { resourceId: "res-001" },
   mindvault_cancel_transfer: { resourceId: "res-001" },
+  mindvault_pending_transfer: { resourceId: "res-001" },
   mindvault_set_listed: { resourceId: "res-001", listed: true },
   mindvault_dispute: { resourceId: "res-001", action: "flag", reason: "Duplicate listing" },
   mindvault_set_tags: { resourceId: "res-001", tags: ["dataset"] },
